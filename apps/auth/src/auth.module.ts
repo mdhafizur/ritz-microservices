@@ -6,6 +6,9 @@ import * as Joi from 'joi';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthPrismaService } from './services/prisma.service';
+import { LocalStrategy } from './common/strategies/local.strategy';
+import { JwtStrategy } from './common/strategies/jwt.strategy';
+import { AuthUsersService } from './services/auth-users.service';
 
 @Module({
   imports: [
@@ -30,6 +33,12 @@ import { AuthPrismaService } from './services/prisma.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthPrismaService],
+  providers: [
+    AuthService,
+    AuthUsersService,
+    AuthPrismaService,
+    LocalStrategy,
+    JwtStrategy,
+  ],
 })
 export class AuthModule {}
