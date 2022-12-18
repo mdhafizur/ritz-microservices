@@ -1,0 +1,59 @@
+version: '3.9'
+
+networks:
+  default:
+    name: softic_network
+    driver: bridge
+
+volumes:
+  postgres_data: {}
+  postgres_data_backups: {}
+  pgadmin: {}
+  rabbitmq_data: {}
+  traefik-ssl-certs:
+    driver: local
+
+services:
+  auth:
+    build:
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+      target: development
+    command: npm run start:dev auth
+    ports:
+      - '3001:3001'
+    env_file:
+      - ./apps/auth/.env
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+
+  postgres:
+    container_name: softic-postgres
+    build:
+      context: .
+      dockerfile: ./compose/postgres/Dockerfile
+    image: '${CI_REGISTRY_IMAGE}/softic-postgres:${TAG}'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:Z
+      - postgres_data_backups:/backups:z
+    env_file:
+      - ./.env
+    ports:
+      - 7655:5432
+    labels:
+      - traefik.enable=false
+    restart: unless-stopped
+
+  rabbitmq:
+    container_name: softic-rabbitmq
+    image: rabbitmq:3.10-management-alpine
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      # AMQP protocol port
+      - 5672:5672
+      # HTTP management UI
+      - 15672:15672
+    env_file:
+      - ./.env

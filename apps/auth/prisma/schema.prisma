@@ -1,0 +1,309 @@
+generator client {
+    provider      = "prisma-client-js"
+    binaryTargets = ["native"]
+    output        = "generated/client"
+}
+
+datasource AuthDB {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+/// list of field status type
+enum FieldStatusEnum {
+    ACTIVE
+    INACTIVE
+}
+
+/// list of session status type
+enum AuthSessionStatusEnum {
+    ACTIVE
+    INACTIVE
+}
+
+model AuthUser {
+    id String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+
+    /// user's first name
+    firstName   String?   @AuthDB.VarChar(255)
+    /// user's last name
+    lastName    String?   @AuthDB.VarChar(255)
+    /// user's username which will be used for creating an account
+    userName    String    @unique @AuthDB.VarChar(255)
+    /// user's date of birth
+    dateOfBirth DateTime? @AuthDB.Date
+    /// user's email 
+    email       String?   @unique @AuthDB.VarChar(255)
+    /// user's phone
+    phone       String?   @unique @AuthDB.VarChar(255)
+    /// user's password
+    password    String    @AuthDB.VarChar(255)
+
+    /// define if the user is an admin or not
+    isAdmin         Boolean @default(false)
+    /// define if the user is a super User or not
+    isSuperUser     Boolean @default(false)
+    /// define if the user's email is verified or not
+    isEmailVerified Boolean @default(false)
+    /// define if the user's phone is verified or not
+    isPhoneVerified Boolean @default(false)
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt
+
+    /// user's verification tokens
+    verificationTokens             AuthVerificationToken[]
+    /// all associated auth sessions
+    authSessions                   AuthSession[]
+    AuthUserGroup                  AuthUserGroup[]
+    AuthUserPersmission            AuthUserPersmission[]
+    AuthUserAuthenticationProvider AuthUserAuthenticationProvider[]
+    AuthRefreshToken               AuthRefreshToken?
+
+    @@index([userName, email])
+}
+
+/// list of App (Module) + App Models (Tables) 
+model AuthContentType {
+    id       String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+    /// label of the app which a model belongs to
+    /// e.g. Users
+    appLabel String
+    /// label of the model
+    /// e.g. Users app has model User, Profile, Account
+    /// e.g. Auth app has model Permission, Group etc.
+    model    String
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// set of permissions for this App + Model
+    authPermissions AuthPersmission[]
+
+    @@index([appLabel, model])
+}
+
+/// list of group e.g. Affiliate, Admin
+model AuthGroup {
+    id   String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+    /// name of the group
+    /// e.g. Affiliate
+    name String @unique @AuthDB.VarChar(255)
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// list of users who belongs to this group
+    users       AuthUserGroup[]
+    /// list of permissions the group has
+    permissions AuthGroupPersmission[]
+
+    @@index([name])
+}
+
+/// one Group can have many User and one User can belong to many Group. RELATION: m-n
+model AuthUserGroup {
+    id String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// groupdId of the group, which the user will be assigned to
+    /// a group can have many users
+    groupId String    @AuthDB.Uuid
+    group   AuthGroup @relation(fields: [groupId], references: [id])
+    /// userId of the user who will the assigned to the groupId
+    /// a user can join many groups
+    userId  String    @AuthDB.Uuid
+    user    AuthUser  @relation(fields: [userId], references: [id])
+
+    @@index([userId, groupId])
+}
+
+/// set of permissions for this App + Model
+model AuthPersmission {
+    id       String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+    /// name of the permission
+    /// e.g. Can Create User
+    name     String
+    /// name of the action
+    /// CRUD e.g. Create, Delete
+    action   String
+    /// name of the code
+    /// e.g. add_user, update_user
+    codename String
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// associated content type ID
+    contentTypeId String                 @AuthDB.Uuid
+    contentType   AuthContentType        @relation(fields: [contentTypeId], references: [id])
+    /// list of users assoicated with the auth user permission
+    users         AuthUserPersmission[]
+    /// list of group assoicated with the auth user permission
+    groups        AuthGroupPersmission[]
+
+    @@unique([contentTypeId, action], name: "contentTypeAction")
+    @@index([name, action, codename, contentTypeId])
+}
+
+/// one Group can have many Permission and one Permission can belong to many Group. RELATION: m-n
+model AuthGroupPersmission {
+    id String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// groupId which will have the permissionId assigned to
+    groupId      String          @AuthDB.Uuid
+    group        AuthGroup       @relation(fields: [groupId], references: [id])
+    /// permissionId which will be assigned to this groupId
+    permissionId String          @AuthDB.Uuid
+    permission   AuthPersmission @relation(fields: [permissionId], references: [id])
+
+    /// same group is not allowed to take same permission more than once
+    @@unique([groupId, permissionId], name: "groupPermission")
+    @@index([groupId, permissionId])
+}
+
+/// set of user's permissions for this App + Model 
+model AuthUserPersmission {
+    id String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// userId of user to whom this permission is assigned to
+    userId       String          @AuthDB.Uuid
+    user         AuthUser        @relation(fields: [userId], references: [id])
+    /// permissionId of the permission which is assigned to the user
+    permissionId String          @AuthDB.Uuid
+    permission   AuthPersmission @relation(fields: [permissionId], references: [id])
+
+    @@unique([userId, permissionId], name: "userPermission")
+    @@index([userId, permissionId])
+}
+
+/// One user  can have provider details for each provider type
+model AuthUserAuthenticationProvider {
+    /// key provided by the provider
+    providerKey  String  @id @AuthDB.VarChar(100)
+    /// type of the provider
+    providerType String  @AuthDB.VarChar(50)
+    /// ip address of provider
+    ipAddress    String? @AuthDB.VarChar(100)
+
+    metaData    Json?
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// ID of associated user
+    userId String   @AuthDB.Uuid
+    user   AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, providerType], name: "userProvider")
+    @@index([userId, providerType, providerKey])
+}
+
+/// one user can have only one refresh token
+model AuthRefreshToken {
+    id        String   @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+    /// refresh token
+    token     String?  @AuthDB.VarChar(1000)
+    /// check if the token is revoked?
+    isRevoked Boolean  @default(false)
+    /// refresh token expire date
+    expiresAt DateTime @default(now()) @AuthDB.Timestamptz(6)
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// ID of associated user
+    userId String   @unique @AuthDB.Uuid
+    /// refresh token will be removed if userAccount is being deleted
+    user   AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([token, userId])
+}
+
+/// verification token for user email and phone number
+model AuthVerificationToken {
+    id                            String  @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+    /// type of verification token
+    type                          String  @AuthDB.VarChar(255)
+    /// verification token
+    token                         Int
+    /// secret of two factor authentication
+    twoFactorAuthenticationSecret String?
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    /// ID of associated user
+    userId String   @AuthDB.Uuid
+    user   AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, type], name: "userVerificationType")
+    @@index([userId, token])
+}
+
+/// Auth user session details
+model AuthSession {
+    id String @id @default(dbgenerated("gen_random_uuid()")) @AuthDB.Uuid
+
+    sessionStatus AuthSessionStatusEnum @default(INACTIVE)
+    platform      Json?                 @default("{}")
+    location      Json?                 @default("{}")
+    deviceId      String                @unique @AuthDB.VarChar(100)
+    ip            String                @AuthDB.VarChar(100)
+
+    metaData    Json?           @default("{}")
+    status      FieldStatusEnum @default(ACTIVE)
+    createdById String?         @AuthDB.Uuid
+    updatedById String?         @AuthDB.Uuid
+    createdAt   DateTime        @default(now()) @AuthDB.Timestamptz(6)
+    updatedAt   DateTime?       @updatedAt @AuthDB.Timestamptz(6)
+
+    userId String   @AuthDB.Uuid
+    user   AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
