@@ -21,15 +21,16 @@ import { SignupDTO } from '../dtos/sign-up.dto';
 import { ApiOperation, ApiOkResponse, ApiBody } from '@nestjs/swagger';
 import { Public } from '../common/decorators';
 
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Get()
+  @Post()
   getHello(@Req() req: any): any {
     console.log(req.user);
-    return this.authService.getHello();
+    return this.authService.getHello(req.body);
   }
 
   @Public()

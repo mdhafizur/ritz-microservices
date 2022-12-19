@@ -1,17 +1,27 @@
-import { Module } from '@nestjs/common';
+import { FactoryProvider, Module, Scope } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { RmqModule } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
-import { AuthPrismaService } from './services/prisma.service';
 import { LocalStrategy } from './common/strategies/local.strategy';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 import { AuthUsersService } from './services/auth-users.service';
 import { AuthLoggerModule } from '../logger/logger.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, REQUEST } from '@nestjs/core';
+import { Request } from 'express';
 import { AccessTokenGuard } from './common/guards';
+import { PrismaClientManager } from './prisma-client-manager';
+import { PrismaClient } from '../prisma/generated/client';
+
+const prismaClientProvider: FactoryProvider<PrismaClient> = {
+  provide: PrismaClient,
+  scope: Scope.REQUEST,
+  inject: [REQUEST, PrismaClientManager],
+  useFactory: (request: Request, manager: PrismaClientManager) =>
+    manager.getClient(request),
+};
 
 @Module({
   imports: [
@@ -39,9 +49,10 @@ import { AccessTokenGuard } from './common/guards';
   ],
   controllers: [AuthController],
   providers: [
+    PrismaClientManager,
+    prismaClientProvider,
     AuthService,
     AuthUsersService,
-    AuthPrismaService,
     LocalStrategy,
     JwtStrategy,
     {

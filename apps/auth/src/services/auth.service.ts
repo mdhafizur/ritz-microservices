@@ -1,12 +1,12 @@
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AuthPrismaService } from './prisma.service';
 import { Response } from 'express';
 import { JwtPayload, Tokens } from '../types';
 import * as argon2 from 'argon2';
 import { SignupDTO } from '../dtos/sign-up.dto';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { PrismaClient } from 'apps/auth/prisma/generated/client';
 
 @Injectable()
 export class AuthService {
@@ -15,9 +15,15 @@ export class AuthService {
     private readonly logger: LoggerService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private authPrismaService: AuthPrismaService,
+    private authPrismaService: PrismaClient,
   ) {}
-  async getHello(): Promise<any> {
+  async getHello(data: any): Promise<any> {
+    return await this.authPrismaService.authUser.create({
+      data: {
+        userName: data.userName,
+        password: data.password,
+      },
+    });
     return 'hello';
   }
 
