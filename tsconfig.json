@@ -17,6 +17,9 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
+    // JSON import support
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "paths": {
       "@app/common": [
         "libs/common/src"

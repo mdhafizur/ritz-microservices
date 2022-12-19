@@ -10,15 +10,15 @@ import {
   Version,
 } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
-import { AuthService } from './auth.service';
-import { CurrentUser } from './common/decorators/current-user.decorator';
-import { LocalAuthGuard } from './common/guards';
-import JwtAuthGuard from './common/guards/jwt-auth.guard';
+import { AuthService } from '../services/auth.service';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { LocalAuthGuard } from '../common/guards';
+import JwtAuthGuard from '../common/guards/jwt-auth.guard';
 import { Response } from 'express';
-import { Tokens } from './types';
-import { SignupDTO } from './dtos/sign-up.dto';
+import { Tokens } from '../types';
+import { SignupDTO } from '../dtos/sign-up.dto';
 import { ApiOperation, ApiOkResponse, ApiBody } from '@nestjs/swagger';
-import { Public } from './common/decorators';
+import { Public } from '../common/decorators';
 
 @Controller()
 export class AuthController {
@@ -53,7 +53,7 @@ export class AuthController {
     @CurrentUser() user: any,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await this.authService.login(user, response);
+    await this.authService.loginLocal(user, response);
     response.send(user);
   }
 

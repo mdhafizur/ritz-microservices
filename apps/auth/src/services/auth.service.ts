@@ -1,15 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AuthPrismaService } from './services/prisma.service';
+import { AuthPrismaService } from './prisma.service';
 import { Response } from 'express';
-import { JwtPayload, Tokens } from './types';
+import { JwtPayload, Tokens } from '../types';
 import * as argon2 from 'argon2';
-import { SignupDTO } from './dtos/sign-up.dto';
+import { SignupDTO } from '../dtos/sign-up.dto';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: LoggerService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
     private authPrismaService: AuthPrismaService,
@@ -25,15 +28,11 @@ export class AuthService {
   }
 
   async signupLocal(signupDTO: SignupDTO): Promise<Tokens> {
-    const expiresAfter = this.configService.get<string>(
-      'REFRESH_TOKEN_EXPIRATION',
+    const expiresAt = new Date();
+    expiresAt.setSeconds(
+      expiresAt.getSeconds() +
+        this.configService.get('REFRESH_TOKEN_EXPIRATION'),
     );
-    const expiresIn = new Date();
-
-    if (expiresAfter.endsWith('d')) {
-      const days = Number(expiresAfter.substring(0, expiresAfter.length - 1));
-      expiresIn.setDate(expiresIn.getDate() + days);
-    }
 
     try {
       signupDTO.password = await argon2.hash(signupDTO.password);
@@ -47,7 +46,7 @@ export class AuthService {
       await this.authPrismaService.authRefreshToken.create({
         data: {
           userId: createdUser.id,
-          expiresAt: expiresIn,
+          expiresAt: expiresAt,
         },
       });
 
@@ -70,42 +69,40 @@ export class AuthService {
       return tokens;
     } catch (error) {
       console.log(error);
-      // this.logger.error(
-      //   'Calling signupLocal()',
-      //   error.stack,
-      //   AuthenticationsService.name,
-      // );
+      this.logger.error('Calling signupLocal()', error.stack, AuthService.name);
       // PrismaErrorHandler(error);
     }
   }
 
-  async login(user: any, response: Response) {
+  async loginLocal(user: any, response: Response) {
     const tokens = await this.getTokens(user.id, user.userName);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
 
-    // let expires = new Date();
+    // const expires = new Date();
     // expires.setSeconds(
-    //   expires.getSeconds() + this.configService.get('ACCESS_TOKEN_EXPIRATION'),
+    //   expires.getSeconds() + this.configService.get('JWT_EXPIRATION'),
     // );
 
-    const expires = new Date();
-    expires.setSeconds(
-      expires.getSeconds() + this.configService.get('JWT_EXPIRATION'),
+    const atExpiresIn = new Date();
+    atExpiresIn.setSeconds(
+      atExpiresIn.getSeconds() +
+        this.configService.get('ACCESS_TOKEN_EXPIRATION'),
     );
 
     response.cookie('AccessToken', tokens.accessToken, {
       httpOnly: true,
-      expires,
+      maxAge: atExpiresIn.getMilliseconds(),
     });
 
-    // expires = new Date();
-    // expires.setSeconds(
-    //   expires.getSeconds() + this.configService.get('REFRESH_TOKEN_EXPIRATION'),
-    // );
+    const rtExpiresIn = new Date();
+    rtExpiresIn.setSeconds(
+      rtExpiresIn.getSeconds() +
+        this.configService.get('REFRESH_TOKEN_EXPIRATION'),
+    );
 
     response.cookie('RefreshToken', tokens.refreshToken, {
       httpOnly: true,
-      expires,
+      maxAge: rtExpiresIn.getMilliseconds(),
     });
   }
 
@@ -119,11 +116,11 @@ export class AuthService {
       const [accessToken, refreshToken] = await Promise.all([
         this.jwtService.signAsync(jwtPayload, {
           secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
-          expiresIn: this.configService.get<string>('ACCESS_TOKEN_EXPIRATION'),
+          expiresIn: Number(this.configService.get('ACCESS_TOKEN_EXPIRATION')),
         }),
         this.jwtService.signAsync(jwtPayload, {
           secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
-          expiresIn: this.configService.get<string>('REFRESH_TOKEN_EXPIRATION'),
+          expiresIn: Number(this.configService.get('REFRESH_TOKEN_EXPIRATION')),
         }),
       ]);
 
@@ -132,11 +129,7 @@ export class AuthService {
         refreshToken: refreshToken,
       };
     } catch (error) {
-      // this.logger.error(
-      //   'Calling getTokens()',
-      //   error.stack,
-      //   AuthenticationsService.name,
-      // );
+      this.logger.error('Calling getTokens()', error.stack, AuthService.name);
       // PrismaErrorHandler(error);
     }
   }
@@ -148,20 +141,30 @@ export class AuthService {
     try {
       const hash = await argon2.hash(refreshToken);
 
+      const expiresIn = new Date();
+      const expiresAt = this.configService.get<string>(
+        'REFRESH_TOKEN_EXPIRATION',
+      );
+      if (expiresAt) {
+        const days = Math.floor(Number(expiresAt) / (3600 * 24));
+        expiresIn.setDate(expiresIn.getDate() + days);
+      }
+
       await this.authPrismaService.authRefreshToken.update({
         where: {
           userId: userId,
         },
         data: {
           token: hash,
+          expiresAt: expiresIn,
         },
       });
     } catch (error) {
-      // this.logger.error(
-      //   'Calling updateRefreshToken()',
-      //   error.stack,
-      //   AuthenticationsService.name,
-      // );
+      this.logger.error(
+        'Calling updateRefreshToken()',
+        error.stack,
+        AuthService.name,
+      );
       // PrismaErrorHandler(error);
     }
   }
