@@ -1,3 +1,4 @@
+import { AccessTokenGuard } from './../common/guards/access-token.guard';
 import {
   Body,
   Controller,
@@ -5,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
   UseGuards,
   Version,
@@ -13,16 +15,22 @@ import { MessagePattern } from '@nestjs/microservices';
 import { AuthService } from '../services/auth.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { LocalAuthGuard } from '../common/guards';
-import JwtAuthGuard from '../common/guards/jwt-auth.guard';
 import { Response } from 'express';
 import { Tokens } from '../types';
 import { SignupDTO } from '../dtos/sign-up.dto';
 import { ApiOperation, ApiOkResponse, ApiBody } from '@nestjs/swagger';
 import { Public } from '../common/decorators';
 
-@Controller()
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Public()
+  @Get()
+  getHello(@Req() req: any): any {
+    console.log(req.user);
+    return this.authService.getHello();
+  }
 
   @Public()
   @Post('signup')
@@ -42,11 +50,6 @@ export class AuthController {
     return this.authService.signupLocal(signupDTO);
   }
 
-  @Get()
-  getHello(): any {
-    return this.authService.getHello();
-  }
-
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(
@@ -57,7 +60,7 @@ export class AuthController {
     response.send(user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AccessTokenGuard)
   @MessagePattern('validate_user')
   async validateUser(@CurrentUser() user: any) {
     return user;

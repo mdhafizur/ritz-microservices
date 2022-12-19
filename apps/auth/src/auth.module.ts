@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { RmqModule } from '@app/common';
 import * as Joi from 'joi';
@@ -10,6 +10,8 @@ import { LocalStrategy } from './common/strategies/local.strategy';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 import { AuthUsersService } from './services/auth-users.service';
 import { AuthLoggerModule } from '../logger/logger.module';
+import { APP_GUARD } from '@nestjs/core';
+import { AccessTokenGuard } from './common/guards';
 
 @Module({
   imports: [
@@ -42,6 +44,10 @@ import { AuthLoggerModule } from '../logger/logger.module';
     AuthPrismaService,
     LocalStrategy,
     JwtStrategy,
+    {
+      provide: APP_GUARD,
+      useClass: AccessTokenGuard,
+    },
   ],
 })
 export class AuthModule {}

@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { RmqOptions } from '@nestjs/microservices';
 import { AuthModule } from './auth.module';
+import 'reflect-metadata';
 
 async function bootstrap() {
   const app = await NestFactory.create(AuthModule);

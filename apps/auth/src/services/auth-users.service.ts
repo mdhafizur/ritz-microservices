@@ -1,16 +1,23 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
+  LoggerService,
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 // import * as bcrypt from 'bcrypt';
 import { AuthPrismaService } from './prisma.service';
 import * as argon2 from 'argon2';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class AuthUsersService {
-  constructor(private authPrismaService: AuthPrismaService) {}
+  constructor(
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: LoggerService,
+    private authPrismaService: AuthPrismaService,
+  ) {}
 
   //   async createUser(request: CreateUserRequest) {
   //     await this.validateCreateUserRequest(request);
@@ -52,15 +59,28 @@ export class AuthUsersService {
 
       return user;
     } catch (error) {
+      this.logger.error(
+        'Calling validateUser()',
+        error.stack,
+        AuthUsersService.name,
+      );
       console.log('validateUser', error);
     }
   }
 
   async getUser(userName: string) {
-    return this.authPrismaService.authUser.findUnique({
-      where: {
-        userName: userName,
-      },
-    });
+    try {
+      return this.authPrismaService.authUser.findUnique({
+        where: {
+          userName: userName,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        'Calling getUser()',
+        error.stack,
+        AuthUsersService.name,
+      );
+    }
   }
 }

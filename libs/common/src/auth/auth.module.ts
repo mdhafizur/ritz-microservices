@@ -1,5 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 import { RmqModule } from '../rmq/rmq.module';
 import { AUTH_SERVICE } from './services';
 

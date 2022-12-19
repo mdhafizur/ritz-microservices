@@ -18,13 +18,7 @@ export class AuthService {
     private authPrismaService: AuthPrismaService,
   ) {}
   async getHello(): Promise<any> {
-    const user = await this.authPrismaService.authUser.create({
-      data: {
-        userName: 'Hafiz',
-        password: '123456789',
-      },
-    });
-    return user;
+    return 'hello';
   }
 
   async signupLocal(signupDTO: SignupDTO): Promise<Tokens> {
@@ -89,7 +83,7 @@ export class AuthService {
         this.configService.get('ACCESS_TOKEN_EXPIRATION'),
     );
 
-    response.cookie('AccessToken', tokens.accessToken, {
+    response.cookie('accessToken', tokens.accessToken, {
       httpOnly: true,
       maxAge: atExpiresIn.getMilliseconds(),
     });
@@ -100,7 +94,7 @@ export class AuthService {
         this.configService.get('REFRESH_TOKEN_EXPIRATION'),
     );
 
-    response.cookie('RefreshToken', tokens.refreshToken, {
+    response.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
       maxAge: rtExpiresIn.getMilliseconds(),
     });
