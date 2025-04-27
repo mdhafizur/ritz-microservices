@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { PrismaClient } from 'apps/auth/prisma/generated/client';
+import { PrismaClient } from 'apps/app/prisma/generated/client';
 // import * as bcrypt from 'bcrypt';
 import * as argon2 from 'argon2';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
@@ -16,7 +16,7 @@ export class AuthUsersService {
   constructor(
     @Inject(WINSTON_MODULE_NEST_PROVIDER)
     private readonly logger: LoggerService,
-    private authPrismaService: PrismaClient,
+    private appPrismaService: PrismaClient,
   ) {}
 
   //   async createUser(request: CreateUserRequest) {
@@ -43,7 +43,7 @@ export class AuthUsersService {
 
   async validateUser(userName: string, password: string) {
     try {
-      const user = await this.authPrismaService.authUser.findUnique({
+      const user = await this.appPrismaService.appUser.findUnique({
         where: {
           userName: userName,
         },
@@ -70,7 +70,7 @@ export class AuthUsersService {
 
   async getUser(userName: string) {
     try {
-      return this.authPrismaService.authUser.findUnique({
+      return this.appPrismaService.appUser.findUnique({
         where: {
           userName: userName,
         },

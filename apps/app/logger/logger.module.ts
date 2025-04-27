@@ -43,7 +43,7 @@ const transports = {
           error: 'red',
         },
       }),
-      nestWinstonModuleUtilities.format.nestLike('BitDeposit', {
+      nestWinstonModuleUtilities.format.nestLike('Ritz', {
         prettyPrint: true,
       }),
     ),
@@ -55,7 +55,7 @@ const transports = {
     zippedArchive: true,
     maxSize: '20m',
     maxFiles: '7d',
-    dirname: 'apps/auth/logs',
+    dirname: 'apps/app/logs',
     format: winston.format.combine(infoFilter()),
   }),
   debugFile: new winston.transports.DailyRotateFile({
@@ -65,7 +65,7 @@ const transports = {
     zippedArchive: true,
     maxSize: '20m',
     maxFiles: '7d',
-    dirname: 'apps/auth/logs',
+    dirname: 'apps/app/logs',
     format: winston.format.combine(debugFilter()),
   }),
   errorFile: new winston.transports.DailyRotateFile({
@@ -75,7 +75,7 @@ const transports = {
     zippedArchive: true,
     maxSize: '20m',
     maxFiles: '7d',
-    dirname: 'apps/auth/logs',
+    dirname: 'apps/app/logs',
     format: winston.format.combine(errorFilter()),
   }),
 };
@@ -112,4 +112,4 @@ const transports = {
     }),
   ],
 })
-export class AuthLoggerModule {}
+export class AppLoggerModule {}

@@ -1,32 +1,26 @@
-import { FactoryProvider, Module, Scope } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { RmqModule } from '@app/common';
+import { AuthModule, RmqModule } from '@app/common';
 import * as Joi from 'joi';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService } from './services/auth.service';
 import { LocalStrategy } from './common/strategies/local.strategy';
 import { JwtStrategy } from './common/strategies/jwt.strategy';
 import { AuthUsersService } from './services/auth-users.service';
-import { AuthLoggerModule } from '../logger/logger.module';
-import { APP_GUARD, REQUEST } from '@nestjs/core';
-import { Request } from 'express';
+import { AppLoggerModule } from '../logger/logger.module';
+import { APP_GUARD } from '@nestjs/core';
 import { AccessTokenGuard } from './common/guards';
-import { PrismaClientManager } from './prisma-client-manager';
-import { PrismaClient } from '../prisma/generated/client';
-
-const prismaClientProvider: FactoryProvider<PrismaClient> = {
-  provide: PrismaClient,
-  scope: Scope.REQUEST,
-  inject: [REQUEST, PrismaClientManager],
-  useFactory: (request: Request, manager: PrismaClientManager) =>
-    manager.getClient(request),
-};
+import {
+  PrismaClientManager,
+  PrismaClientProvider,
+} from './prisma-client-manager';
+import { AppController } from './controllers/app.controller';
 
 @Module({
   imports: [
     RmqModule,
-    AuthLoggerModule,
+    AppLoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
@@ -34,9 +28,10 @@ const prismaClientProvider: FactoryProvider<PrismaClient> = {
         JWT_EXPIRATION: Joi.string().required(),
         DATABASE_URL: Joi.string().required(),
       }),
-      envFilePath: './apps/auth/.env',
+      envFilePath: './apps/app/.env',
     }),
     JwtModule.register({}),
+    AuthModule,
     // JwtModule.registerAsync({
     //   useFactory: (configService: ConfigService) => ({
     //     secret: configService.get<string>('ACCESS_TOKEN_SECRET'),
@@ -47,10 +42,10 @@ const prismaClientProvider: FactoryProvider<PrismaClient> = {
     //   inject: [ConfigService],
     // }),
   ],
-  controllers: [AuthController],
+  controllers: [AppController, AuthController],
   providers: [
     PrismaClientManager,
-    prismaClientProvider,
+    PrismaClientProvider,
     AuthService,
     AuthUsersService,
     LocalStrategy,
@@ -61,4 +56,4 @@ const prismaClientProvider: FactoryProvider<PrismaClient> = {
     },
   ],
 })
-export class AuthModule {}
+export class AppModule {}

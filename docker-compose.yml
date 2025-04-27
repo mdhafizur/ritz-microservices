@@ -1,9 +1,10 @@
 version: '3.9'
 
 networks:
-  default:
-    name: softic_network
-    driver: bridge
+  web:
+    external: true
+  internal:
+    external: false
 
 volumes:
   postgres_data: {}
@@ -12,28 +13,32 @@ volumes:
   rabbitmq_data: {}
   traefik-ssl-certs:
     driver: local
+  traefik-data: {}
 
 services:
-  auth:
+  app:
     build:
       context: .
-      dockerfile: ./apps/auth/Dockerfile
+      dockerfile: ./apps/app/Dockerfile
       target: development
-    command: npm run start:dev auth
+    command: npm run start:dev app
     ports:
       - '3001:3001'
     env_file:
-      - ./apps/auth/.env
+      - ./apps/app/.env
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
+    networks:
+      - web
+      - internal
 
   postgres:
-    container_name: softic-postgres
+    container_name: ritz-postgres
     build:
       context: .
       dockerfile: ./compose/postgres/Dockerfile
-    image: '${CI_REGISTRY_IMAGE}/softic-postgres:${TAG}'
+    image: '${CI_REGISTRY_IMAGE}/ritz-postgres:${TAG}'
     volumes:
       - postgres_data:/var/lib/postgresql/data:Z
       - postgres_data_backups:/backups:z
@@ -44,9 +49,11 @@ services:
     labels:
       - traefik.enable=false
     restart: unless-stopped
+    networks:
+      - internal
 
   rabbitmq:
-    container_name: softic-rabbitmq
+    container_name: ritz-rabbitmq
     image: rabbitmq:3.10-management-alpine
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -57,3 +64,52 @@ services:
       - 15672:15672
     env_file:
       - ./.env
+    networks:
+      - web
+      - internal
+
+  mongodb:
+    container_name: ritz-mongodb
+    image: mongo
+    ports:
+      - 27017:27017
+    env_file:
+      - ./.env
+    labels:
+      - traefik.enable=false
+    networks:
+      - web
+      - internal
+
+  redis:
+    image: redis:7.0
+    container_name: ritz-redis
+    ports:
+      - 6379:6379
+    command: bash -c "redis-server /usr/local/etc/redis/redis.conf;"
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - internal
+
+  traefik:
+    container_name: ritz-traefik
+    image: '${CI_REGISTRY_IMAGE}/ritz-traefik:${TAG}'
+    build:
+      context: .
+      dockerfile: ./compose/traefik/Dockerfile
+    environment:
+      - DO_AUTH_TOKEN=${DO_AUTH_TOKEN}
+      # DOMAIN_URL is used in traefik config.yml file !
+      - DOMAIN_URL=${DOMAIN_URL}
+    ports:
+      - 80:80 # Exposes port 80 for incomming web requests
+      - 8080:8080 # The Web UI port http://0.0.0.0:8080 (enabled by --api.insecure=true)
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - traefik-ssl-certs:/ssl-certs # storage integrity for the certs file
+      # - traefik-data:/etc/traefik
+    networks:
+      - web
+      - internal

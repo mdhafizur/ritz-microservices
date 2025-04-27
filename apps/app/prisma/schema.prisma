@@ -1,0 +1,412 @@
+generator client {
+    provider      = "prisma-client-js"
+    binaryTargets = ["native"]
+    output        = "generated/client"
+}
+
+datasource MasterDB {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+/// list of field status type
+enum RecordStatusEnum {
+    ACTIVE
+    INACTIVE
+    DELETED
+}
+
+/// list of session status type
+enum AppUserSessionStatusEnum {
+    ACTIVE
+    INACTIVE
+}
+
+model AppUser {
+    uuid                          String                          @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    /// user's first name
+    firstName                     String?                         @MasterDB.VarChar(255)
+    /// user's last name
+    lastName                      String?                         @MasterDB.VarChar(255)
+    /// user's username which will be used for creating an account
+    userName                      String                          @unique @MasterDB.VarChar(255)
+    /// user's date of birth
+    dateOfBirth                   DateTime?                       @MasterDB.Date
+    /// user's email 
+    email                         String?                         @unique @MasterDB.VarChar(255)
+    /// user's phone
+    phone                         String?                         @unique @MasterDB.VarChar(255)
+    /// user's password
+    password                      String                          @MasterDB.VarChar(255)
+    /// define if the user is an admin or not
+    isAdmin                       Boolean                         @default(false)
+    /// define if the user is a super User or not
+    isSuperUser                   Boolean                         @default(false)
+    /// define if the user's email is verified or not
+    isEmailVerified               Boolean                         @default(false)
+    /// define if the user's phone is verified or not
+    isPhoneVerified               Boolean                         @default(false)
+    propertyJSON                  Json?                           @default("{}")
+    status                        RecordStatusEnum                @default(ACTIVE)
+    createdByUuid                 String?                         @MasterDB.Uuid
+    updatedByUuid                 String?                         @MasterDB.Uuid
+    createdAt                     DateTime                        @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt                     DateTime?                       @updatedAt
+    /// user's verification tokens
+    verificationTokens            AppVerificationToken[]
+    /// all associated app sessions
+    appUserSession                AppUserSession[]
+    appGroupUser                  AppGroupUser[]
+    appUserPersmission            AppUserPersmission[]
+    appAuthenticationProviderUser AppAuthenticationProviderUser[]
+    appRefreshToken               AppRefreshToken?
+    appUserSubscription           AppUserSubscription[]
+    appTenantUser                 AppTenantUser[]
+
+    @@index([userName, email])
+}
+
+/// list of App (Module) + App Models (Tables) 
+model AppContentType {
+    uuid          String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    /// label of the app which a model belongs to
+    /// e.g. Users
+    moduleName    String
+    /// label of the model
+    /// e.g. Users app has model User, Profile, Account
+    /// e.g. App app has model Permission, Group etc.
+    tableName     String
+    propertyJSON  Json?            @default("{}")
+    status        RecordStatusEnum @default(ACTIVE)
+    createdByUuid String?          @MasterDB.Uuid
+    updatedByUuid String?          @MasterDB.Uuid
+    createdAt     DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    /// set of permissions for this App + Model
+    appPermission AppPersmission[]
+
+    @@index([moduleName, tableName])
+}
+
+/// list of group e.g. Affiliate, Admin
+model AppGroup {
+    uuid          String                @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    /// name of the group
+    /// e.g. Affiliate
+    name          String                @unique @MasterDB.VarChar(255)
+    propertyJSON  Json?                 @default("{}")
+    status        RecordStatusEnum      @default(ACTIVE)
+    createdByUuid String?               @MasterDB.Uuid
+    updatedByUuid String?               @MasterDB.Uuid
+    createdAt     DateTime              @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?             @updatedAt @MasterDB.Timestamptz(6)
+    /// list of users who belongs to this group
+    users         AppGroupUser[]
+    /// list of permissions the group has
+    permissions   AppGroupPersmission[]
+
+    @@index([name])
+}
+
+/// one Group can have many User and one User can belong to many Group. RELATION: m-n
+model AppGroupUser {
+    uuid          String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    propertyJSON  Json?            @default("{}")
+    status        RecordStatusEnum @default(ACTIVE)
+    createdByUuid String?          @MasterDB.Uuid
+    updatedByUuid String?          @MasterDB.Uuid
+    createdAt     DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    /// groupdId of the group, which the user will be assigned to
+    /// a group can have many users
+    appGroupUuid  String           @MasterDB.Uuid
+    appGroup      AppGroup         @relation(fields: [appGroupUuid], references: [uuid])
+    /// userUuid of the user who will the assigned to the appGroupUuid
+    /// a user can join many groups
+    userUuid      String           @MasterDB.Uuid
+    appUser       AppUser          @relation(fields: [userUuid], references: [uuid])
+
+    @@index([userUuid, appGroupUuid])
+}
+
+/// set of permissions for this App + Model
+model AppPersmission {
+    uuid          String                @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    /// name of the permission
+    /// e.g. Can Create User
+    name          String
+    /// name of the action
+    /// CRUD e.g. Create, Delete
+    action        String
+    /// name of the code
+    /// e.g. add_user, update_user
+    codename      String
+    propertyJSON  Json?                 @default("{}")
+    status        RecordStatusEnum      @default(ACTIVE)
+    createdByUuid String?               @MasterDB.Uuid
+    updatedByUuid String?               @MasterDB.Uuid
+    createdAt     DateTime              @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?             @updatedAt @MasterDB.Timestamptz(6)
+    /// associated content type ID
+    contentTypeId String                @MasterDB.Uuid
+    contentType   AppContentType        @relation(fields: [contentTypeId], references: [uuid])
+    /// list of users assoicated with the app user permission
+    users         AppUserPersmission[]
+    /// list of group assoicated with the app user permission
+    groups        AppGroupPersmission[]
+
+    @@unique([contentTypeId, action], name: "contentTypeAction")
+    @@index([name, action, codename, contentTypeId])
+}
+
+/// one Group can have many Permission and one Permission can belong to many Group. RELATION: m-n
+model AppGroupPersmission {
+    uuid              String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    propertyJSON      Json?            @default("{}")
+    status            RecordStatusEnum @default(ACTIVE)
+    createdByUuid     String?          @MasterDB.Uuid
+    updatedByUuid     String?          @MasterDB.Uuid
+    createdAt         DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt         DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    /// appGroupUuid which will have the appPermissionUuid assigned to
+    appGroupUuid      String           @MasterDB.Uuid
+    group             AppGroup         @relation(fields: [appGroupUuid], references: [uuid])
+    /// appPermissionUuid which will be assigned to this appGroupUuid
+    appPermissionUuid String           @MasterDB.Uuid
+    appPermission     AppPersmission   @relation(fields: [appPermissionUuid], references: [uuid])
+
+    /// same group is not allowed to take same permission more than once
+    @@unique([appGroupUuid, appPermissionUuid], name: "groupPermission")
+    @@index([appGroupUuid, appPermissionUuid])
+}
+
+/// set of user's permissions for this App + Model 
+model AppUserPersmission {
+    uuid              String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    propertyJSON      Json?            @default("{}")
+    status            RecordStatusEnum @default(ACTIVE)
+    createdByUuid     String?          @MasterDB.Uuid
+    updatedByUuid     String?          @MasterDB.Uuid
+    createdAt         DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt         DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    /// userUuid of user to whom this permission is assigned to
+    userUuid          String           @MasterDB.Uuid
+    appUser           AppUser          @relation(fields: [userUuid], references: [uuid])
+    /// appPermissionUuid of the permission which is assigned to the user
+    appPermissionUuid String           @MasterDB.Uuid
+    appPersmission    AppPersmission   @relation(fields: [appPermissionUuid], references: [uuid])
+
+    @@unique([userUuid, appPermissionUuid], name: "userPermission")
+    @@index([userUuid, appPermissionUuid])
+}
+
+/// One user  can have provider details for each provider type
+model AppAuthenticationProvider {
+    uuid                          String                          @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name                          String                          @MasterDB.VarChar(100)
+    code                          String                          @MasterDB.VarChar(50)
+    description                   String?                         @MasterDB.VarChar(100)
+    propertyJSON                  Json?
+    status                        RecordStatusEnum                @default(ACTIVE)
+    createdByUuid                 String?                         @MasterDB.Uuid
+    updatedByUuid                 String?                         @MasterDB.Uuid
+    createdAt                     DateTime                        @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt                     DateTime?                       @updatedAt @MasterDB.Timestamptz(6)
+    appUserAuthenticationProvider AppAuthenticationProviderUser[]
+}
+
+/// One user  can have provider details for each provider type
+model AppAuthenticationProviderUser {
+    /// key provided by the provider
+    providerKey                   String                     @id @MasterDB.VarChar(100)
+    /// type of the provider
+    providerType                  String                     @MasterDB.VarChar(50)
+    /// ip address of provider
+    ipAddress                     String?                    @MasterDB.VarChar(100)
+    propertyJSON                  Json?
+    status                        RecordStatusEnum           @default(ACTIVE)
+    createdByUuid                 String?                    @MasterDB.Uuid
+    updatedByUuid                 String?                    @MasterDB.Uuid
+    createdAt                     DateTime                   @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt                     DateTime?                  @updatedAt @MasterDB.Timestamptz(6)
+    userUuid                      String                     @MasterDB.Uuid
+    user                          AppUser                    @relation(fields: [userUuid], references: [uuid])
+    appAuthenticationProvider     AppAuthenticationProvider? @relation(fields: [appAuthenticationProviderUuid], references: [uuid])
+    appAuthenticationProviderUuid String?                    @MasterDB.Uuid
+
+    @@unique([userUuid, appAuthenticationProviderUuid], name: "userProvider")
+    @@index([userUuid, appAuthenticationProviderUuid])
+}
+
+/// one user can have only one refresh token
+model AppRefreshToken {
+    uuid          String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    /// refresh token
+    token         String?          @MasterDB.VarChar(1000)
+    /// check if the token is revoked?
+    isRevoked     Boolean          @default(false)
+    /// refresh token expire date
+    expiresAt     DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    propertyJSON  Json?            @default("{}")
+    status        RecordStatusEnum @default(ACTIVE)
+    createdByUuid String?          @MasterDB.Uuid
+    updatedByUuid String?          @MasterDB.Uuid
+    createdAt     DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    /// ID of associated user
+    userUuid      String           @unique @MasterDB.Uuid
+    /// refresh token will be removed if userAccount is being deleted
+    appUser       AppUser          @relation(fields: [userUuid], references: [uuid])
+
+    @@index([token, userUuid])
+}
+
+/// verification token for user email and phone number
+model AppVerificationToken {
+    uuid          String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    /// type of verification token
+    type          String           @MasterDB.VarChar(255)
+    /// verification token
+    token         Int
+    propertyJSON  Json?            @default("{}")
+    status        RecordStatusEnum @default(ACTIVE)
+    createdByUuid String?          @MasterDB.Uuid
+    updatedByUuid String?          @MasterDB.Uuid
+    createdAt     DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    /// ID of associated user
+    userUuid      String           @MasterDB.Uuid
+    appUser       AppUser          @relation(fields: [userUuid], references: [uuid])
+
+    @@unique([userUuid, type], name: "userVerificationType")
+    @@index([userUuid, token])
+}
+
+/// App user session details
+model AppUserSession {
+    uuid          String                   @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    sessionStatus AppUserSessionStatusEnum @default(INACTIVE)
+    platform      Json?                    @default("{}")
+    location      Json?                    @default("{}")
+    deviceId      String                   @unique @MasterDB.VarChar(100)
+    ip            String                   @MasterDB.VarChar(100)
+    propertyJSON  Json?                    @default("{}")
+    status        RecordStatusEnum         @default(ACTIVE)
+    createdByUuid String?                  @MasterDB.Uuid
+    updatedByUuid String?                  @MasterDB.Uuid
+    createdAt     DateTime                 @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?                @updatedAt @MasterDB.Timestamptz(6)
+    userUuid      String                   @MasterDB.Uuid
+    appUser       AppUser                  @relation(fields: [userUuid], references: [uuid])
+}
+
+/// App subscription
+model AppSubscription {
+    uuid                  String                  @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name                  String                  @MasterDB.VarChar(100)
+    code                  String                  @MasterDB.VarChar(50)
+    description           String?                 @MasterDB.VarChar(100)
+    propertyJSON          Json?
+    status                RecordStatusEnum        @default(ACTIVE)
+    createdByUuid         String?                 @MasterDB.Uuid
+    updatedByUuid         String?                 @MasterDB.Uuid
+    createdAt             DateTime                @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt             DateTime?               @updatedAt @MasterDB.Timestamptz(6)
+    appUserSubscription   AppUserSubscription[]
+    appTenantSubscription AppTenantSubscription[]
+    appTenantResources    AppTenantResources[]
+}
+
+/// App subscription
+model AppUserSubscription {
+    uuid                String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name                String           @MasterDB.VarChar(100)
+    code                String           @MasterDB.VarChar(50)
+    description         String?          @MasterDB.VarChar(100)
+    propertyJSON        Json?
+    status              RecordStatusEnum @default(ACTIVE)
+    createdByUuid       String?          @MasterDB.Uuid
+    updatedByUuid       String?          @MasterDB.Uuid
+    createdAt           DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt           DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    userUuid            String           @MasterDB.Uuid
+    appUser             AppUser          @relation(fields: [userUuid], references: [uuid])
+    appSubscriptionUuid String           @MasterDB.Uuid
+    appSubscription     AppSubscription  @relation(fields: [appSubscriptionUuid], references: [uuid])
+}
+
+model AppTenant {
+    uuid                  String                  @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name                  String                  @MasterDB.VarChar(100)
+    code                  String                  @MasterDB.VarChar(50)
+    description           String?                 @MasterDB.VarChar(100)
+    propertyJSON          Json?
+    status                RecordStatusEnum        @default(ACTIVE)
+    createdByUuid         String?                 @MasterDB.Uuid
+    updatedByUuid         String?                 @MasterDB.Uuid
+    createdAt             DateTime                @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt             DateTime?               @updatedAt @MasterDB.Timestamptz(6)
+    appTenantSubscription AppTenantSubscription[]
+    appTenantUser         AppTenantUser[]
+    appTenantResources    AppTenantResources[]
+
+    @@unique([code])
+}
+
+model AppTenantSubscription {
+    uuid                String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name                String           @MasterDB.VarChar(100)
+    code                String           @MasterDB.VarChar(50)
+    description         String?          @MasterDB.VarChar(100)
+    propertyJSON        Json?
+    status              RecordStatusEnum @default(ACTIVE)
+    createdByUuid       String?          @MasterDB.Uuid
+    updatedByUuid       String?          @MasterDB.Uuid
+    createdAt           DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt           DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    tenantUuid          String           @MasterDB.Uuid
+    appTenant           AppTenant        @relation(fields: [tenantUuid], references: [uuid])
+    appSubscriptionUuid String           @MasterDB.Uuid
+    appSubscription     AppSubscription  @relation(fields: [appSubscriptionUuid], references: [uuid])
+}
+
+model AppTenantUser {
+    uuid          String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name          String           @MasterDB.VarChar(100)
+    code          String           @MasterDB.VarChar(50)
+    description   String?          @MasterDB.VarChar(100)
+    propertyJSON  Json?
+    status        RecordStatusEnum @default(ACTIVE)
+    createdByUuid String?          @MasterDB.Uuid
+    updatedByUuid String?          @MasterDB.Uuid
+    createdAt     DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt     DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    tenantUuid    String           @MasterDB.Uuid
+    appTenant     AppTenant        @relation(fields: [tenantUuid], references: [uuid])
+    appUserUuid   String           @MasterDB.Uuid
+    appUser       AppUser          @relation(fields: [appUserUuid], references: [uuid])
+}
+
+model AppTenantResources {
+    uuid                String           @id @default(dbgenerated("gen_random_uuid()")) @MasterDB.Uuid
+    name                String           @MasterDB.VarChar(100)
+    code                String           @MasterDB.VarChar(50)
+    description         String?          @MasterDB.VarChar(100)
+    instanceUuid        String?          @MasterDB.Uuid
+    instanceCode        String?          @MasterDB.VarChar(100)
+    instanceCategory    String?          @MasterDB.VarChar(100)
+    resourceType        String?          @MasterDB.VarChar(100)
+    remarks             String?          @MasterDB.Text
+    propertyJSON        Json?
+    connectionJSON      Json?
+    specificationsJSON  Json?
+    status              RecordStatusEnum @default(ACTIVE)
+    createdByUuid       String?          @MasterDB.Uuid
+    updatedByUuid       String?          @MasterDB.Uuid
+    createdAt           DateTime         @default(now()) @MasterDB.Timestamptz(6)
+    updatedAt           DateTime?        @updatedAt @MasterDB.Timestamptz(6)
+    tenantUuid          String           @MasterDB.Uuid
+    appTenant           AppTenant        @relation(fields: [tenantUuid], references: [uuid])
+    appSubscriptionUuid String           @MasterDB.Uuid
+    appSubscription     AppSubscription  @relation(fields: [appSubscriptionUuid], references: [uuid])
+}

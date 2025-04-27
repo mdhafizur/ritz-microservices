@@ -10,4 +10,4 @@ RUN npm ci --force
 
 COPY . .
 
-RUN npm run build auth
+RUN npm run build app

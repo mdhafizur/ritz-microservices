@@ -17,18 +17,17 @@ export class JwtAuthGuard implements CanActivate {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     const accessToken = this.getAuthentication(context);
-    return this.authClient
-      .send('validate_user', {
-        accessToken: accessToken,
-      })
-      .pipe(
-        tap((res) => {
-          this.addUser(res, context);
-        }),
-        catchError(() => {
-          throw new UnauthorizedException();
-        }),
-      );
+    const payload = {
+      accessToken: accessToken,
+    };
+    return this.authClient.send('validate-user', payload).pipe(
+      tap((res) => {
+        this.addUser(res, context);
+      }),
+      catchError(() => {
+        throw new UnauthorizedException();
+      }),
+    );
   }
 
   private getAuthentication(context: ExecutionContext) {

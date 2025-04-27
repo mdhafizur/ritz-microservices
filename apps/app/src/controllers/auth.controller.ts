@@ -1,10 +1,10 @@
-import { AccessTokenGuard } from './../common/guards/access-token.guard';
 import {
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
   Res,
@@ -14,13 +14,14 @@ import {
 import { MessagePattern } from '@nestjs/microservices';
 import { AuthService } from '../services/auth.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { LocalAuthGuard } from '../common/guards';
 import { Response } from 'express';
 import { Tokens } from '../types';
-import { SignupDTO } from '../dtos/sign-up.dto';
+import { SignupDTO } from '../dto/sign-up.dto';
 import { ApiOperation, ApiOkResponse, ApiBody } from '@nestjs/swagger';
-import { Public } from '../common/decorators';
-
+import { GetCurrentUser, Public } from '../common/decorators';
+import { SignInDTO } from '../dto/signin.dto';
+import { JwtAuthGuard } from '@app/common';
+import { AppUser } from 'apps/app/prisma/generated/client';
 
 @Controller('auth')
 export class AuthController {
@@ -28,7 +29,7 @@ export class AuthController {
 
   @Public()
   @Post()
-  getHello(@Req() req: any): any {
+  getHello(@Req() req?: any): any {
     console.log(req.user);
     return this.authService.getHello(req.body);
   }
@@ -51,19 +52,28 @@ export class AuthController {
     return this.authService.signupLocal(signupDTO);
   }
 
-  @UseGuards(LocalAuthGuard)
+  @Public()
+  @Version('1')
   @Post('login')
-  async login(
-    @CurrentUser() user: any,
+  async signinLocal(
+    @Body() signInDTO: SignInDTO,
     @Res({ passthrough: true }) response: Response,
   ) {
-    await this.authService.loginLocal(user, response);
-    response.send(user);
+    return await this.authService.signinLocal(signInDTO, response);
   }
 
-  @UseGuards(AccessTokenGuard)
-  @MessagePattern('validate_user')
-  async validateUser(@CurrentUser() user: any) {
+  @Public()
+  @Version('1')
+  @Get('users/:uuid')
+  @UseGuards(JwtAuthGuard)
+  async getUser(@CurrentUser() user: AppUser, @Param('uuid') uuid: string) {
+    console.log(user);
+    return await this.authService.getUser(uuid);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @MessagePattern('validate-user')
+  async validateUser(@GetCurrentUser() user: any) {
     return user;
   }
 }
