@@ -1,73 +1,128 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Ritz Microservices
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+![Project Logo](https://via.placeholder.com/350x100?text=Ritz+Microservices)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+A scalable, modular microservices application built with [NestJS](https://nestjs.com/), leveraging RabbitMQ, PostgreSQL, Redis, and Kafka for robust distributed systems.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Table of Contents
+- [Ritz Microservices](#ritz-microservices)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Architecture](#architecture)
+  - [Quick Start](#quick-start)
+    - [1. Clone and Install](#1-clone-and-install)
+    - [2. Environment Variables](#2-environment-variables)
+    - [3. Start with Docker Compose](#3-start-with-docker-compose)
+    - [4. Access](#4-access)
+  - [Environment Variables](#environment-variables)
+  - [Project Structure](#project-structure)
+  - [Available Scripts](#available-scripts)
+  - [API Documentation](#api-documentation)
+  - [Testing](#testing)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Author](#author)
 
-## Installation
+---
 
+## Features
+- **Microservices Architecture** with NestJS
+- **RabbitMQ** for message-based communication
+- **PostgreSQL** as the main database
+- **Redis** for caching/session management
+- **Kafka** for event streaming
+- **JWT Authentication** (access/refresh tokens)
+- **Centralized Logging** with Winston
+- **Swagger API Docs**
+- **Dockerized Deployment**
+
+## Architecture
+- **apps/app/**: Main application service
+- **libs/common/**: Shared modules and code
+- **compose/**: Docker Compose configs for databases and brokers
+- **data/**: Kafka/Zookeeper data
+- **redis/**: Redis config
+- **secrets/**: SSL certificates
+
+## Quick Start
+
+### 1. Clone and Install
 ```bash
-$ npm install
+git clone https://github.com/your-repo/ritz-microservices.git
+cd ritz-microservices
+npm install
 ```
 
-## Running the app
+### 2. Environment Variables
+Copy `.env.example` to `.env` and edit as needed. (See [Environment Variables](#environment-variables))
 
+### 3. Start with Docker Compose
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+docker-compose up --build -d
 ```
 
-## Test
+### 4. Access
+- App: https://localhost:3001
+- Swagger Docs: https://localhost:3001/api/docs
 
-```bash
-# unit tests
-$ npm run test
+## Environment Variables
+| Variable                | Description                        |
+|-------------------------|------------------------------------|
+| DATABASE_URL            | PostgreSQL connection string        |
+| REDIS_URL               | Redis connection string             |
+| RABBITMQ_URL            | RabbitMQ connection string          |
+| KAFKA_BROKER            | Kafka broker address                |
+| JWT_SECRET              | JWT secret key                     |
+| ...                     | ...                                |
 
-# e2e tests
-$ npm run test:e2e
+> See `.env.example` for a full list and details.
 
-# test coverage
-$ npm run test:cov
+## Project Structure
+```
+apps/         # Main app and microservices
+libs/         # Shared libraries
+compose/      # Docker Compose configs
+redis/        # Redis config
+secrets/      # SSL certs
 ```
 
-## Support
+## Available Scripts
+| Script                | Description                         |
+|-----------------------|-------------------------------------|
+| npm run start:dev     | Start in development mode           |
+| npm run build         | Build the application               |
+| npm run test          | Run unit tests                      |
+| npm run test:e2e      | Run end-to-end tests                |
+| npm run test:cov      | Test coverage report                |
+| npm run lint          | Lint codebase                       |
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## API Documentation
+Swagger UI: [https://localhost:3001/api/docs](https://localhost:3001/api/docs)
 
-## Stay in touch
+## Testing
+```bash
+npm run test       # Unit tests
+npm run test:e2e   # End-to-end tests
+npm run test:cov   # Coverage
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Troubleshooting
+- **Ports in use**: Ensure 3001, 5432, 6379, 5672, 9092 are free.
+- **SSL Issues**: Check `secrets/` for valid `cert.pem` and `key.pem`.
+- **Database**: Confirm PostgreSQL is running and accessible.
+
+## Contributing
+1. Fork the repo
+2. Create a feature branch
+3. Commit and push
+4. Open a pull request
 
 ## License
+MIT
 
-Nest is [MIT licensed](LICENSE).
+## Author
+Md Hafizur Rahman
+
